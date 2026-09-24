@@ -112,12 +112,20 @@ export default function ProductDetailsPage() {
   return (
     <ProtectedRoute>
       <div className="mx-auto max-w-4xl p-6">
-        <button
-          onClick={() => router.push("/products")}
-          className="mb-4 text-sm text-blue-600 hover:underline"
-        >
-          ← Back to Products
-        </button>
+        <div className="mb-4 flex items-center justify-between">
+          <button
+            onClick={() => router.push("/products")}
+            className="text-sm text-blue-600 hover:underline"
+          >
+            ← Back to Products
+          </button>
+          <button
+            onClick={() => router.push(`/products/${id}/edit`)}
+            className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+          >
+            Edit Product
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div>
