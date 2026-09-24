@@ -115,9 +115,17 @@ export default function ProductsPage() {
             signal: controller.signal,
           });
         }
+        let finalProducts = data.products;
 
-        setProducts(data.products);
-        setTotal(data.total);
+if (typeof window !== "undefined" && page === 1 && !searchQuery && !category) {
+  const sessionProducts = JSON.parse(
+    sessionStorage.getItem("addedProducts") || "[]"
+  );
+  finalProducts = [...sessionProducts, ...data.products];
+}
+
+setProducts(finalProducts);
+setTotal(data.total + (finalProducts.length - data.products.length));
       } catch (err) {
         if (err.name === "CanceledError" || err.code === "ERR_CANCELED") {
           return;
@@ -183,12 +191,20 @@ export default function ProductsPage() {
       <div className="p-6">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Welcome, {user?.username}</h1>
-          <button
-            onClick={handleLogout}
-            className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
-          >
-            Logout
-          </button>
+          <div className="flex gap-2">
+    <button
+      onClick={() => router.push("/products/add")}
+      className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+    >
+      Add Product
+    </button>
+    <button
+      onClick={handleLogout}
+      className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+    >
+      Logout
+    </button>
+  </div>
         </div>
 
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
