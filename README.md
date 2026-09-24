@@ -3,9 +3,8 @@
 A small admin dashboard built with Next.js, React, Tailwind CSS, and Axios that lets a logged-in user manage products using the [DummyJSON](https://dummyjson.com) API.
 
 ## Live Link
-
 [Add your Vercel/Netlify link here after deployment]
-
+[View Live Project](https://product-admin-dashboard-sage.vercel.app/login)
 ## Tech Stack
 
 - Next.js (App Router)
@@ -56,7 +55,7 @@ A small admin dashboard built with Next.js, React, Tailwind CSS, and Axios that 
 
 DummyJSON doesn't support combining a text search with a category filter in one request. To avoid a confusing or silently-wrong UI, selecting a category clears any active search, and typing in the search box clears any active category filter. Only one of the two is ever active at a time.
 
-### Sort is disabled during search
+### Sort is disabled during search  
 
 DummyJSON's `/products/search` endpoint doesn't accept `sortBy`/`order` parameters. Rather than let the user pick a sort option that silently does nothing, the sort dropdown is disabled while a search term is active.
 
@@ -78,6 +77,7 @@ Each fetch (search, filter, or plain listing) uses an `AbortController`. When th
 
 One issue I ran into: newly-added products would occasionally break the product list with a "duplicate key" React warning. This happened because DummyJSON's `/products/add` endpoint always returns the same fake ID for every new product, so adding more than one product in a session created duplicate IDs. I fixed this by generating a unique local ID (`local-<timestamp>`) for every added product instead of relying on the ID DummyJSON returns.
 
+
 ## Where AI Helped
 
-I used Claude to help design the overall architecture (folder structure, Axios interceptor setup, URL-driven state pattern), to work through the debounce/race-condition logic for search, and to debug a few runtime issues (duplicate React keys, a missing variable reference, PowerShell path-escaping for the `[id]` dynamic route). I reviewed, tested, and understood each part of the code before committing it.
+I used AI to help with the Axios interceptor setup, URL-driven state pattern, debounce and race-condition logic for search, and debugging a few runtime issues. I reviewed, tested, and understood each part of the code before committing it.
