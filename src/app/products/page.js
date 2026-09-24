@@ -115,17 +115,32 @@ export default function ProductsPage() {
             signal: controller.signal,
           });
         }
+
         let finalProducts = data.products;
 
-if (typeof window !== "undefined" && page === 1 && !searchQuery && !category) {
-  const sessionProducts = JSON.parse(
-    sessionStorage.getItem("addedProducts") || "[]"
-  );
-  finalProducts = [...sessionProducts, ...data.products];
-}
+        if (
+          typeof window !== "undefined" &&
+          page === 1 &&
+          !searchQuery &&
+          !category
+        ) {
+          const sessionProducts = JSON.parse(
+            sessionStorage.getItem("addedProducts") || "[]"
+          );
 
-setProducts(finalProducts);
-setTotal(data.total + (finalProducts.length - data.products.length));
+          const sessionIds = new Set(
+            sessionProducts.map((p) => String(p.id))
+          );
+
+          const filteredApiProducts = data.products.filter(
+            (p) => !sessionIds.has(String(p.id))
+          );
+
+          finalProducts = [...sessionProducts, ...filteredApiProducts];
+        }
+
+        setProducts(finalProducts);
+        setTotal(data.total + (finalProducts.length - data.products.length));
       } catch (err) {
         if (err.name === "CanceledError" || err.code === "ERR_CANCELED") {
           return;
@@ -143,7 +158,7 @@ setTotal(data.total + (finalProducts.length - data.products.length));
     return () => {
       controller.abort();
     };
-  }, [searchQuery, category, sortBy, order, limit, skip]);
+  }, [searchQuery, category, sortBy, order, limit, skip, page]);
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages) return;
@@ -192,19 +207,19 @@ setTotal(data.total + (finalProducts.length - data.products.length));
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Welcome, {user?.username}</h1>
           <div className="flex gap-2">
-    <button
-      onClick={() => router.push("/products/add")}
-      className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"
-    >
-      Add Product
-    </button>
-    <button
-      onClick={handleLogout}
-      className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
-    >
-      Logout
-    </button>
-  </div>
+            <button
+              onClick={() => router.push("/products/add")}
+              className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+            >
+              Add Product
+            </button>
+            <button
+              onClick={handleLogout}
+              className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -286,10 +301,17 @@ setTotal(data.total + (finalProducts.length - data.products.length));
               </thead>
               <tbody>
                 {products.map((product) => (
-                  <tr key={product.id} onClick={()=> router.push(`/products/${product.id}`)} className=" cursor-pointer hover:bg-gray-50 border-b text-sm">
+                  <tr
+                    key={product.id}
+                    onClick={() => router.push(`/products/${product.id}`)}
+                    className="cursor-pointer border-b text-sm hover:bg-gray-50"
+                  >
                     <td className="py-2">
                       <img
-                        src={product.thumbnail}
+                        src={
+                          product.thumbnail ||
+                          "https://via.placeholder.com/50?text=No+Image"
+                        }
                         alt={product.title}
                         className="h-12 w-12 rounded object-cover"
                       />
@@ -307,11 +329,15 @@ setTotal(data.total + (finalProducts.length - data.products.length));
             <div className="flex flex-col gap-3 md:hidden">
               {products.map((product) => (
                 <div
-                  key={product.id} onClick={()=>router.push(`/products/${product.id}`)}
-                  className="flex cursor-pointer hover:bg-gray-50 gap-3 rounded border p-3 shadow-sm"
+                  key={product.id}
+                  onClick={() => router.push(`/products/${product.id}`)}
+                  className="flex cursor-pointer gap-3 rounded border p-3 shadow-sm hover:bg-gray-50"
                 >
                   <img
-                    src={product.thumbnail}
+                    src={
+                      product.thumbnail ||
+                      "https://via.placeholder.com/64?text=No+Image"
+                    }
                     alt={product.title}
                     className="h-16 w-16 rounded object-cover"
                   />
@@ -355,7 +381,8 @@ setTotal(data.total + (finalProducts.length - data.products.length));
 
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter(
-                    (p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1
+                    (p) =>
+                      p === 1 || p === totalPages || Math.abs(p - page) <= 1
                   )
                   .map((p, index, arr) => (
                     <span key={p} className="flex items-center">
