@@ -1,17 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect,Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { useAuth } from "@/context/AuthContext";
 import {
   getProducts,
   searchProducts,
   getProductsByCategory,
   getCategories,
+  deleteProduct,
 } from "@/lib/products";
 
-export default function ProductsPage() {
+ function ProductsContent() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -21,6 +23,9 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [categories, setCategories] = useState([]);
+
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const searchQuery = searchParams.get("search") || "";
   const [searchInput, setSearchInput] = useState(searchQuery);
@@ -197,6 +202,52 @@ export default function ProductsPage() {
     updateParams({ page });
   };
 
+  const handleDeleteClick = (e, product) => {
+    e.stopPropagation();
+    setDeleteTarget(product);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteTarget(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+
+    setIsDeleting(true);
+
+    try {
+      const isSessionProduct = String(deleteTarget.id).startsWith("local-");
+
+    if (!isSessionProduct) {
+      await deleteProduct(deleteTarget.id);
+    }
+
+    setProducts((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+    setTotal((prev) => Math.max(0, prev - 1));
+
+    if (typeof window !== "undefined") {
+      const sessionProducts = JSON.parse(
+        sessionStorage.getItem("addedProducts") || "[]"
+      );
+      const updatedSessionProducts = sessionProducts.filter(
+        (p) => String(p.id) !== String(deleteTarget.id)
+      );
+      sessionStorage.setItem(
+        "addedProducts",
+        JSON.stringify(updatedSessionProducts)
+      );
+    }
+
+    setDeleteTarget(null);
+    } catch (err) {
+      setError("Failed to delete product. Please try again.");
+      setDeleteTarget(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const startItem = total === 0 ? 0 : skip + 1;
   const endItem = Math.min(skip + limit, total);
   const sortValue = sortBy ? `${sortBy}:${order}` : "";
@@ -297,6 +348,7 @@ export default function ProductsPage() {
                   <th className="py-2">Price</th>
                   <th className="py-2">Rating</th>
                   <th className="py-2">Stock</th>
+                  <th className="py-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -321,6 +373,14 @@ export default function ProductsPage() {
                     <td className="py-2">${product.price}</td>
                     <td className="py-2">{product.rating}</td>
                     <td className="py-2">{product.stock}</td>
+                    <td className="py-2">
+                      <button
+                        onClick={(e) => handleDeleteClick(e, product)}
+                        className="rounded bg-red-100 px-2 py-1 text-xs text-red-600 hover:bg-red-200"
+                      >
+                        Delete
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -341,13 +401,19 @@ export default function ProductsPage() {
                     alt={product.title}
                     className="h-16 w-16 rounded object-cover"
                   />
-                  <div className="flex flex-col text-sm">
+                  <div className="flex flex-1 flex-col text-sm">
                     <span className="font-medium">{product.title}</span>
                     <span className="text-gray-500">{product.category}</span>
                     <span>${product.price}</span>
                     <span>Rating: {product.rating}</span>
                     <span>Stock: {product.stock}</span>
                   </div>
+                  <button
+                    onClick={(e) => handleDeleteClick(e, product)}
+                    className="ml-auto h-fit rounded bg-red-100 px-2 py-1 text-xs text-red-600 hover:bg-red-200"
+                  >
+                    Delete
+                  </button>
                 </div>
               ))}
             </div>
@@ -414,6 +480,22 @@ export default function ProductsPage() {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        title="Delete Product"
+        message={`Are you sure you want to delete "${deleteTarget?.title}"? This action cannot be undone.`}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        isProcessing={isDeleting}
+      />
     </ProtectedRoute>
+  );
+}
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <ProductsContent />
+    </Suspense>
   );
 }

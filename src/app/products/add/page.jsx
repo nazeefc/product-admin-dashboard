@@ -18,13 +18,18 @@ export default function AddProductPage() {
     try {
       const newProduct = await addProduct(formData);
 
+      const uniqueProduct = {
+        ...newProduct,
+        id: `local-${Date.now()}`,
+      };
+
       if (typeof window !== "undefined") {
         const sessionProducts = JSON.parse(
           sessionStorage.getItem("addedProducts") || "[]"
         );
         sessionStorage.setItem(
           "addedProducts",
-          JSON.stringify([newProduct, ...sessionProducts])
+          JSON.stringify([uniqueProduct, ...sessionProducts])
         );
       }
 
