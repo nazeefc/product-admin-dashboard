@@ -270,7 +270,7 @@ export default function ProductsPage() {
               </thead>
               <tbody>
                 {products.map((product) => (
-                  <tr key={product.id} className="border-b text-sm">
+                  <tr key={product.id} onClick={()=> router.push(`/products/${product.id}`)} className=" cursor-pointer hover:bg-gray-50 border-b text-sm">
                     <td className="py-2">
                       <img
                         src={product.thumbnail}
@@ -291,8 +291,8 @@ export default function ProductsPage() {
             <div className="flex flex-col gap-3 md:hidden">
               {products.map((product) => (
                 <div
-                  key={product.id}
-                  className="flex gap-3 rounded border p-3 shadow-sm"
+                  key={product.id} onClick={()=>router.push(`/products/${product.id}`)}
+                  className="flex cursor-pointer hover:bg-gray-50 gap-3 rounded border p-3 shadow-sm"
                 >
                   <img
                     src={product.thumbnail}

@@ -32,8 +32,8 @@ export const getCategories = async () => {
   return response.data;
 };
 
-export const getProductById = async (id) => {
-  const response = await axiosInstance.get(`/products/${id}`);
+export const getProductById = async (id, config = {}) => {
+  const response = await axiosInstance.get(`/products/${id}`, config);
   return response.data;
 };
 
