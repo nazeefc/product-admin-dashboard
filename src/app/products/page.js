@@ -4,7 +4,12 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
-import { getProducts, searchProducts } from "@/lib/products";
+import {
+  getProducts,
+  searchProducts,
+  getProductsByCategory,
+  getCategories,
+} from "@/lib/products";
 
 export default function ProductsPage() {
   const { user, logout } = useAuth();
@@ -15,9 +20,14 @@ export default function ProductsPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   const searchQuery = searchParams.get("search") || "";
   const [searchInput, setSearchInput] = useState(searchQuery);
+
+  const category = searchParams.get("category") || "";
+  const sortBy = searchParams.get("sortBy") || "";
+  const order = searchParams.get("order") || "asc";
 
   const pageParam = parseInt(searchParams.get("page"), 10);
   const limitParam = parseInt(searchParams.get("limit"), 10);
@@ -48,9 +58,22 @@ export default function ProductsPage() {
   };
 
   useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await getCategories();
+        setCategories(data);
+      } catch (err) {
+        console.error("Failed to load categories", err);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       if (searchInput !== searchQuery) {
-        updateParams({ search: searchInput, page: 1 });
+        updateParams({ search: searchInput, category: "", page: 1 });
       }
     }, 500);
 
@@ -65,14 +88,33 @@ export default function ProductsPage() {
       setError(null);
 
       try {
-        const data = searchQuery
-          ? await searchProducts({
-              query: searchQuery,
-              limit,
-              skip,
-              signal: controller.signal,
-            })
-          : await getProducts({ limit, skip, signal: controller.signal });
+        let data;
+
+        if (searchQuery) {
+          data = await searchProducts({
+            query: searchQuery,
+            limit,
+            skip,
+            signal: controller.signal,
+          });
+        } else if (category) {
+          data = await getProductsByCategory({
+            category,
+            limit,
+            skip,
+            sortBy,
+            order,
+            signal: controller.signal,
+          });
+        } else {
+          data = await getProducts({
+            limit,
+            skip,
+            sortBy,
+            order,
+            signal: controller.signal,
+          });
+        }
 
         setProducts(data.products);
         setTotal(data.total);
@@ -93,7 +135,7 @@ export default function ProductsPage() {
     return () => {
       controller.abort();
     };
-  }, [searchQuery, limit, skip]);
+  }, [searchQuery, category, sortBy, order, limit, skip]);
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages) return;
@@ -102,6 +144,24 @@ export default function ProductsPage() {
 
   const handleLimitChange = (e) => {
     updateParams({ limit: e.target.value, page: 1 });
+  };
+
+  const handleCategoryChange = (e) => {
+    const newCategory = e.target.value;
+    setSearchInput("");
+    updateParams({ category: newCategory, search: "", page: 1 });
+  };
+
+  const handleSortChange = (e) => {
+    const value = e.target.value;
+
+    if (!value) {
+      updateParams({ sortBy: "", order: "", page: 1 });
+      return;
+    }
+
+    const [newSortBy, newOrder] = value.split(":");
+    updateParams({ sortBy: newSortBy, order: newOrder, page: 1 });
   };
 
   const handleLogout = () => {
@@ -116,6 +176,7 @@ export default function ProductsPage() {
 
   const startItem = total === 0 ? 0 : skip + 1;
   const endItem = Math.min(skip + limit, total);
+  const sortValue = sortBy ? `${sortBy}:${order}` : "";
 
   return (
     <ProtectedRoute>
@@ -130,7 +191,7 @@ export default function ProductsPage() {
           </button>
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <input
             type="text"
             placeholder="Search products..."
@@ -138,6 +199,38 @@ export default function ProductsPage() {
             onChange={(e) => setSearchInput(e.target.value)}
             className="w-full max-w-md rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+
+          <select
+            value={category}
+            onChange={handleCategoryChange}
+            className="rounded border border-gray-300 px-3 py-2"
+          >
+            <option value="">All categories</option>
+            {categories.map((cat) => {
+              const value = typeof cat === "string" ? cat : cat.slug;
+              const label = typeof cat === "string" ? cat : cat.name;
+              return (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              );
+            })}
+          </select>
+
+          <select
+            value={sortValue}
+            onChange={handleSortChange}
+            disabled={!!searchQuery}
+            className="rounded border border-gray-300 px-3 py-2 disabled:cursor-not-allowed disabled:bg-gray-100"
+          >
+            <option value="">Sort by</option>
+            <option value="price:asc">Price: Low to High</option>
+            <option value="price:desc">Price: High to Low</option>
+            <option value="rating:asc">Rating: Low to High</option>
+            <option value="rating:desc">Rating: High to Low</option>
+            <option value="title:asc">Title: A to Z</option>
+            <option value="title:desc">Title: Z to A</option>
+          </select>
         </div>
 
         {isLoading && (
