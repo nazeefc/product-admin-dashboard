@@ -22,6 +22,21 @@ export default function ProductDetailsPage() {
       setError(null);
       setNotFound(false);
 
+      if (typeof window !== "undefined") {
+        const sessionProducts = JSON.parse(
+          sessionStorage.getItem("addedProducts") || "[]"
+        );
+        const sessionMatch = sessionProducts.find(
+          (p) => String(p.id) === String(id)
+        );
+
+        if (sessionMatch) {
+          setProduct(sessionMatch);
+          setIsLoading(false);
+          return;
+        }
+      }
+
       try {
         const data = await getProductById(id, { signal: controller.signal });
         setProduct(data);
@@ -107,7 +122,10 @@ export default function ProductDetailsPage() {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div>
             <img
-              src={product.thumbnail}
+              src={
+                product.thumbnail ||
+                "https://via.placeholder.com/400?text=No+Image"
+              }
               alt={product.title}
               className="mb-3 h-64 w-full rounded object-cover"
             />
