@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
-import { getProducts } from "@/lib/products";
+import { getProducts, searchProducts } from "@/lib/products";
 
 export default function ProductsPage() {
   const { user, logout } = useAuth();
@@ -15,6 +15,9 @@ export default function ProductsPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const searchQuery = searchParams.get("search") || "";
+  const [searchInput, setSearchInput] = useState(searchQuery);
 
   const pageParam = parseInt(searchParams.get("page"), 10);
   const limitParam = parseInt(searchParams.get("limit"), 10);
@@ -30,25 +33,56 @@ export default function ProductsPage() {
 
   const skip = (page - 1) * limit;
 
+  const updateParams = (updates) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === "" || value === null || value === undefined) {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    });
+
+    router.push(`/products?${params.toString()}`);
+  };
+
   useEffect(() => {
-    let isCancelled = false;
+    const timer = setTimeout(() => {
+      if (searchInput !== searchQuery) {
+        updateParams({ search: searchInput, page: 1 });
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  useEffect(() => {
+    const controller = new AbortController();
 
     const fetchProducts = async () => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const data = await getProducts({ limit, skip });
-        if (!isCancelled) {
-          setProducts(data.products);
-          setTotal(data.total);
-        }
+        const data = searchQuery
+          ? await searchProducts({
+              query: searchQuery,
+              limit,
+              skip,
+              signal: controller.signal,
+            })
+          : await getProducts({ limit, skip, signal: controller.signal });
+
+        setProducts(data.products);
+        setTotal(data.total);
       } catch (err) {
-        if (!isCancelled) {
-          setError("Failed to load products.");
+        if (err.name === "CanceledError" || err.code === "ERR_CANCELED") {
+          return;
         }
+        setError("Failed to load products.");
       } finally {
-        if (!isCancelled) {
+        if (!controller.signal.aborted) {
           setIsLoading(false);
         }
       }
@@ -57,19 +91,9 @@ export default function ProductsPage() {
     fetchProducts();
 
     return () => {
-      isCancelled = true;
+      controller.abort();
     };
-  }, [limit, skip]);
-
-  const updateParams = (updates) => {
-    const params = new URLSearchParams(searchParams.toString());
-
-    Object.entries(updates).forEach(([key, value]) => {
-      params.set(key, value);
-    });
-
-    router.push(`/products?${params.toString()}`);
-  };
+  }, [searchQuery, limit, skip]);
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages) return;
@@ -106,6 +130,16 @@ export default function ProductsPage() {
           </button>
         </div>
 
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Search products..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="w-full max-w-md rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
         {isLoading && (
           <p className="text-center text-gray-500">Loading products...</p>
         )}
@@ -123,7 +157,9 @@ export default function ProductsPage() {
         )}
 
         {!isLoading && !error && products.length === 0 && (
-          <p className="text-center text-gray-500">No products found.</p>
+          <p className="text-center text-gray-500">
+            No products found{searchQuery ? ` for "${searchQuery}"` : ""}.
+          </p>
         )}
 
         {!isLoading && !error && products.length > 0 && (

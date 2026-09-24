@@ -1,6 +1,6 @@
 import axiosInstance from "./axios";
 
-export const getProducts = async ({ limit, skip, sortBy, order }) => {
+export const getProducts = async ({ limit, skip, sortBy, order, signal }) => {
   const params = { limit, skip };
 
   if (sortBy) {
@@ -8,13 +8,14 @@ export const getProducts = async ({ limit, skip, sortBy, order }) => {
     params.order = order || "asc";
   }
 
-  const response = await axiosInstance.get("/products", { params });
+  const response = await axiosInstance.get("/products", { params, signal });
   return response.data;
 };
 
-export const searchProducts = async ({ query, limit, skip }) => {
+export const searchProducts = async ({ query, limit, skip, signal }) => {
   const response = await axiosInstance.get("/products/search", {
     params: { q: query, limit, skip },
+    signal,
   });
   return response.data;
 };
